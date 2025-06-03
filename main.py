@@ -1,12 +1,13 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 app = FastAPI()
 
-class UserQuery(BaseModel):
-    question: str
+class Message(BaseModel):
+    message: str
 
-@app.post("/ask")
-def ask_question(query: UserQuery):
+@app.post("/chat")
+async def chat(msg: Message):
     # Placeholder response
-    return {"answer": f"You asked: {query.question}"}
+    return {"response": f"You said: {msg.message}"}
