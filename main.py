@@ -5,7 +5,7 @@ import os
 
 app = FastAPI()
 
-# Allow frontend to access backend
+# Allow GitHub Pages frontend to access the API
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -13,12 +13,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Set your Replicate API Token here (safely in production via environment variables)
-os.environ["REPLICATE_API_TOKEN"] = "r8_AQHa0wk2DFGpJ3P3JS9OxVnhpIG9wdz1a7q6C"
+# Set your Replicate API token here
+os.environ["REPLICATE_API_TOKEN"] = "r8_UUvcpA4kyGOMtJ54lAFvg7jJaoRfzkY1Fg5cs"
 
-@app.get("/")
-def read_root():
-    return {"message": "CareerBot backend with Mistral is running!"}
+model = replicate.models.get("mistralai/mistral-7b-instruct-v0.1")
+version = model.versions.get("ac6149c76b6caaaa8390c4050203104fc3762f545fc23c0e312795d34b2c3600")
 
 @app.post("/get_response")
 async def get_response(request: Request):
@@ -26,7 +25,7 @@ async def get_response(request: Request):
     message = data.get("message", "")
 
     output = replicate.run(
-        "mistralai/mistral-7b-instruct-v0.1",
+        version,
         input={
             "prompt": f"[INST] {message} [/INST]",
             "temperature": 0.7,
@@ -35,5 +34,5 @@ async def get_response(request: Request):
         }
     )
 
-    response_text = ''.join(output) if isinstance(output, list) else str(output)
-    return {"response": response_text}
+    # Join output list into a single string
+    return {"response": "".join(output)}
