@@ -8,17 +8,13 @@ app = FastAPI()
 # Enable frontend access (CORS)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # You can replace with your GitHub Pages domain for more security
+    allow_origins=["*"],  # Or set this to your GitHub Pages domain
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Set token from environment variable (defined in Render dashboard)
+# Set the API token from Render's environment variable
 os.environ["REPLICATE_API_TOKEN"] = os.getenv("REPLICATE_API_TOKEN")
-
-# Load model + version
-model = replicate.models.get("mistralai/mistral-7b-instruct-v0.1")
-version = model.versions.get("ac6149c76b6caaaa8390c4050203104fc3762f545fc23c0e312795d34b2c3600")
 
 @app.get("/")
 def health_check():
@@ -29,9 +25,9 @@ async def get_response(request: Request):
     data = await request.json()
     message = data.get("message", "")
 
-    # Use Mistral to generate response
+    # Call Replicate API to run Mistral 7B Instruct
     output = replicate.run(
-        version,
+        "mistralai/mistral-7b-instruct-v0.1",  # ✅ use full model name here
         input={
             "prompt": f"[INST] {message} [/INST]",
             "temperature": 0.7,
