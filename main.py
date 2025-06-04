@@ -8,7 +8,7 @@ app = FastAPI()
 # Enable frontend access (CORS)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows all domains (for testing)
+    allow_origins=["https://ridima496.github.io"],  # Allows all domains (for testing)
     allow_methods=["*"],
     allow_headers=["*"],
 )
