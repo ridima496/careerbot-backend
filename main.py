@@ -5,11 +5,10 @@ import os
 
 app = FastAPI()
 
-# Enable frontend access (CORS)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://ridima496.github.io"],  # Allows all domains (for testing)
-    allow_methods=["*"],
+    allow_origins=["https://ridima496.github.io"],  # Replace with your exact GitHub Pages URL
+    allow_methods=["POST", "GET"],
     allow_headers=["*"],
 )
 
