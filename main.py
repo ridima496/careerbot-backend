@@ -1,9 +1,11 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-import uvicorn
+import replicate
+import os
 
 app = FastAPI()
 
+# Allow frontend to access backend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -11,19 +13,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Set your Replicate API Token here (safely in production via environment variables)
+os.environ["REPLICATE_API_TOKEN"] = "r8_AQHa0wk2DFGpJ3P3JS9OxVnhpIG9wdz1a7q6C"
+
 @app.get("/")
 def read_root():
-    return {"message": "Hello, this is CareerBot backend."}
+    return {"message": "CareerBot backend with Mistral is running!"}
 
 @app.post("/get_response")
 async def get_response(request: Request):
     data = await request.json()
-    user_message = data.get("message", "")
+    message = data.get("message", "")
 
-    # Basic response logic
-    if "career" in user_message.lower():
-        return {"response": "There are many career options available. Let's explore them together!"}
-    elif "hello" in user_message.lower():
-        return {"response": "Hello! I'm CareerBot, your personal career guide."}
-    else:
-        return {"response": "I'm still learning! Please try asking something related to careers or skills."}
+    output = replicate.run(
+        "mistralai/mistral-7b-instruct-v0.1",
+        input={
+            "prompt": f"[INST] {message} [/INST]",
+            "temperature": 0.7,
+            "top_p": 0.9,
+            "max_new_tokens": 200
+        }
+    )
+
+    response_text = ''.join(output) if isinstance(output, list) else str(output)
+    return {"response": response_text}
