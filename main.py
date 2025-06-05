@@ -1,38 +1,51 @@
+# CareerBot Backend using Together.ai
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-import replicate
+import requests
 import os
 
 app = FastAPI()
 
+# Enable frontend access
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://ridima496.github.io"],  # Replace with your exact GitHub Pages URL
-    allow_methods=["POST", "GET"],
+    allow_origins=["*"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Set the API token from Render's environment variable
-os.environ["REPLICATE_API_TOKEN"] = os.getenv("REPLICATE_API_TOKEN")
+# Load Together.ai API key from environment
+TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY")
+TOGETHER_API_URL = "https://api.together.xyz/v1/completions"
 
 @app.get("/")
-def health_check():
-    return {"message": "CareerBot backend running successfully."}
+def root():
+    return {"message": "CareerBot backend running with Together.ai."}
 
 @app.post("/get_response")
 async def get_response(request: Request):
     data = await request.json()
     message = data.get("message", "")
 
-    # Call Replicate API to run Mistral 7B Instruct
-    output = replicate.run(
-        "mistralai/mistral-7b-instruct-v0.1",  # ✅ use full model name here
-        input={
-            "prompt": f"[INST] {message} [/INST]",
-            "temperature": 0.7,
-            "top_p": 0.9,
-            "max_new_tokens": 300
-        }
-    )
+    headers = {
+        "Authorization": f"Bearer {TOGETHER_API_KEY}",
+        "Content-Type": "application/json"
+    }
 
-    return {"response": "".join(output)}
+    payload = {
+        "model": "mistralai/Mistral-7B-Instruct-v0.1",
+        "prompt": f"[INST] {message} [/INST]",
+        "max_tokens": 300,
+        "temperature": 0.7,
+        "top_p": 0.9
+    }
+
+    response = requests.post(TOGETHER_API_URL, headers=headers, json=payload)
+
+    if response.status_code == 200:
+        result = response.json()
+        reply = result.get("choices", [{}])[0].get("text", "Sorry, I couldn't understand that.")
+        return {"response": reply.strip()}
+    else:
+        return {"response": "Sorry, there was an error with the AI model."}
