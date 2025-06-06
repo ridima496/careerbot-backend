@@ -22,8 +22,13 @@ def read_root():
 @app.post("/get_response")
 async def get_response(request: Request):
     data = await request.json()
-    prompt = data.get("message")
+    user_input = data.get("message", "")
 
+    prompt = f"""<s>[INST] You are CareerBot, an expert AI assistant helping students with career guidance, resume building, LinkedIn enhancement, productivity tips, and skill mapping. Be friendly, clear, and helpful.
+
+User: {user_input}
+CareerBot: [/INST]"""
+    
     headers = {
         "Authorization": f"Bearer {TOGETHER_API_KEY}",
         "Content-Type": "application/json"
