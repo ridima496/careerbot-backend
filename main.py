@@ -8,6 +8,7 @@ load_dotenv()
 TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY")
 
 app = FastAPI()
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -31,8 +32,7 @@ async def get_response(request: Request):
         "prompt": user_input,
         "max_tokens": 300,
         "temperature": 0.7,
-        "top_p": 0.8,
-        "stop": ["</s>", "\n"]
+        "top_p": 0.9
     }
 
     response = requests.post("https://api.together.xyz/v1/completions", json=payload, headers=headers)
