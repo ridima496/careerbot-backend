@@ -19,9 +19,7 @@ app.add_middleware(
 @app.post("/get_response")
 async def get_response(request: Request):
     data = await request.json()
-    user_input = data.get("message", "")
-
-    prompt = user_input  # no memory
+    user_input = data.get("message", "").strip()
 
     headers = {
         "Authorization": f"Bearer {TOGETHER_API_KEY}",
@@ -30,10 +28,11 @@ async def get_response(request: Request):
 
     payload = {
         "model": "mistralai/Mistral-7B-Instruct-v0.1",
-        "prompt": prompt,
-        "max_tokens": 512,
+        "prompt": user_input,
+        "max_tokens": 300,
         "temperature": 0.7,
-        "top_p": 0.7
+        "top_p": 0.8,
+        "stop": ["</s>", "\n"]
     }
 
     response = requests.post("https://api.together.xyz/v1/completions", json=payload, headers=headers)
