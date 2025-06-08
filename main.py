@@ -28,7 +28,7 @@ async def get_response(request: Request):
     }
 
     payload = {
-        "model": "mistralai/Mistral-7B-Instruct-v0.1",
+        "model": "mistralai/Mistral-7B-v0.1",  # Base model (not Instruct)
         "prompt": user_input,
         "max_tokens": 300,
         "temperature": 0.7,
