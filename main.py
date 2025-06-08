@@ -17,6 +17,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/")
+async def root():
+    return {"message": "CareerBot backend is live!"}
+
 @app.post("/get_response")
 async def get_response(request: Request):
     try:
@@ -31,16 +35,18 @@ async def get_response(request: Request):
             "Content-Type": "application/json"
         }
 
+        prompt = f"[INST] {user_input} [/INST]"
+
         payload = {
-            "model": "mistralai/Mistral-7B-v0.1",  # Base model
-            "prompt": user_input,
+            "model": "mistralai/Mistral-7B-Instruct-v0.1",
+            "prompt": prompt,
             "max_tokens": 300,
             "temperature": 0.7,
             "top_p": 0.9
         }
 
         response = requests.post("https://api.together.xyz/v1/completions", json=payload, headers=headers)
-        response.raise_for_status()  # will raise error if not 200
+        response.raise_for_status()
 
         result = response.json()
         output = result.get("choices", [{}])[0].get("text", "").strip()
@@ -50,7 +56,3 @@ async def get_response(request: Request):
     except Exception as e:
         print(f"[ERROR] {e}")
         return {"response": f"⚠️ Error: {str(e)}"}
-
-@app.get("/")
-async def root():
-    return {"message": "CareerBot backend is live!"}
