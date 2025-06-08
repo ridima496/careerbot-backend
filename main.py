@@ -19,24 +19,38 @@ app.add_middleware(
 
 @app.post("/get_response")
 async def get_response(request: Request):
-    data = await request.json()
-    user_input = data.get("message", "").strip()
+    try:
+        data = await request.json()
+        user_input = data.get("message", "").strip()
 
-    headers = {
-        "Authorization": f"Bearer {TOGETHER_API_KEY}",
-        "Content-Type": "application/json"
-    }
+        if not user_input:
+            return {"response": "Please enter a valid message."}
 
-    payload = {
-        "model": "mistralai/Mistral-7B-v0.1",  # Base model (not Instruct)
-        "prompt": user_input,
-        "max_tokens": 300,
-        "temperature": 0.7,
-        "top_p": 0.9
-    }
+        headers = {
+            "Authorization": f"Bearer {TOGETHER_API_KEY}",
+            "Content-Type": "application/json"
+        }
 
-    response = requests.post("https://api.together.xyz/v1/completions", json=payload, headers=headers)
-    result = response.json()
-    output = result.get("choices", [{}])[0].get("text", "").strip()
+        payload = {
+            "model": "mistralai/Mistral-7B-v0.1",  # Base model
+            "prompt": user_input,
+            "max_tokens": 300,
+            "temperature": 0.7,
+            "top_p": 0.9
+        }
 
-    return {"response": output}
+        response = requests.post("https://api.together.xyz/v1/completions", json=payload, headers=headers)
+        response.raise_for_status()  # will raise error if not 200
+
+        result = response.json()
+        output = result.get("choices", [{}])[0].get("text", "").strip()
+
+        return {"response": output or "No response generated."}
+
+    except Exception as e:
+        print(f"[ERROR] {e}")
+        return {"response": f"⚠️ Error: {str(e)}"}
+
+@app.get("/")
+async def root():
+    return {"message": "CareerBot backend is live!"}
