@@ -40,7 +40,7 @@ async def get_response(request: Request):
         payload = {
             "model": "mistralai/Mistral-7B-Instruct-v0.1",
             "prompt": prompt,
-            "max_tokens": 300,
+            "max_tokens": 700,
             "temperature": 0.7,
             "top_p": 0.9
         }
