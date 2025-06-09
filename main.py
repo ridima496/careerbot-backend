@@ -35,7 +35,13 @@ async def get_response(request: Request):
             "Content-Type": "application/json"
         }
 
-        prompt = f"[INST] You are CareerBot, an AI assistant that helps with career guidance.\n{user_input} [/INST]"
+        history = data.get("history", [])[-5:]  # get last 5 messages
+        formatted_history = ""
+        for msg in history:
+            role = "user" if msg["sender"] == "You" else "assistant"
+            formatted_history += f"{role}: {msg['text']}\n"
+
+        prompt = f"[INST] You are CareerBot, an AI assistant that helps with career guidance.\n{formatted_history}user: {user_input} [/INST]"
 
         payload = {
             "model": "mistralai/Mistral-7B-Instruct-v0.1",
