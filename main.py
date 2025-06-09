@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request 
 from fastapi.middleware.cors import CORSMiddleware
 import requests
 import os
@@ -35,16 +35,11 @@ async def get_response(request: Request):
             "Content-Type": "application/json"
         }
 
-        # Light system prompt: career assistant with flexibility
-        context = (
-            "You are CareerBot, an AI assistant that helps with career guidance, resume advice, LinkedIn optimization, skill development, and productivity tips. \n\n"
-        )
-
-        full_prompt = context + user_input
+        prompt = f"[INST] You are CareerBot, an AI assistant that helps with career guidance.\n{user_input} [/INST]"
 
         payload = {
             "model": "mistralai/Mistral-7B-Instruct-v0.1",
-            "prompt": full_prompt,
+            "prompt": prompt,
             "max_tokens": 700,
             "temperature": 0.7,
             "top_p": 0.9
