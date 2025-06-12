@@ -4,6 +4,7 @@ from typing import Optional
 import re
 import requests
 import os
+import json
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -22,7 +23,7 @@ app.add_middleware(
 @app.get("/")
 async def root():
     return {"message": "CareerBot backend is live!"}
-
+    
 def enhance_linkedin_section(section_type: str, user_content: str, additional_info: Optional[str] = None) -> str:
     """
     Generates enhanced LinkedIn content based on the section type and user input.
@@ -72,26 +73,57 @@ Please:
 3. Recommend skills order
 4. Identify top 5 skills to feature"""
     
-    elif section_type == "feedback":
-        base_prompt = f"""Provide comprehensive feedback on this LinkedIn profile:
-Profile Summary: {user_content}
-Focus Areas: {additional_info}
+    elif section_type == "comprehensive_feedback":
+        headline = user_content.get("headline", "")
+        about = user_content.get("about", "")
+        experience = user_content.get("experience", "")
+        skills = user_content.get("skills", "")
+        desired_job = user_content.get("desiredJob", "")
+        
+        # Generate scores for visualization (in a real app, these would be calculated)
+        scores = {
+            "Headline": min(100, max(60, len(headline) // 3)),
+            "About": min(100, max(50, len(about) // 5)),
+            "Experience": min(100, max(70, len(experience) // 4)),
+            "Skills": min(100, max(65, len(skills) // 2)),
+            "Overall": min(100, max(60, (len(headline) + len(about) + len(experience) + len(skills)) // 25)
+        }
+        
+        analysis_prompt = f"""Provide comprehensive LinkedIn profile feedback based on these details:
+        
+Current Headline: {headline}
+About Section: {about}
+Experience Section: {experience}
+Skills Section: {skills}
+Desired Career/Job: {desired_job}
 
-Please analyze:
-1. Completeness
-2. Keyword optimization
-3. Professionalism
-4. Specific feedback on {additional_info}
-5. Overall impression"""
-    
-    return base_prompt
+Analysis Format:
+1. **Profile Summary**: Brief overview of profile strength
+2. **Section-by-Section Analysis**:
+   - Headline: /100 score - Key feedback
+   - About: /100 score - Key feedback
+   - Experience: /100 score - Key feedback
+   - Skills: /100 score - Key feedback
+3. **Top 3 Recommendations**: Actionable improvements
+4. **Keyword Optimization**: Suggestions for "{desired_job}"
+5. **Final Score**: /100 with justification
+
+Provide detailed, professional feedback with specific examples of improvements."""
+
+        # Add visualization data to the response
+        response = {
+            "visualization": scores,
+            "analysis": analysis_prompt
+        }
+        
+        return response
 
 @app.post("/get_response")
 async def get_response(request: Request):
     try:
         data = await request.json()
         user_input = data.get("message", "").strip()
-        history = data.get("history", [])[-5:]  # get last 5 messages
+        history = data.get("history", [])[-5:]
 
         if not user_input:
             return {"response": "Please enter a valid message."}
@@ -100,8 +132,7 @@ async def get_response(request: Request):
             "Authorization": f"Bearer {TOGETHER_API_KEY}",
             "Content-Type": "application/json"
         }
-
-        # Check if this is part of LinkedIn Enhancer flow
+        
         is_linkedin_enhancer = any(
             msg.get("text", "").startswith("Help me enhance my LinkedIn profile") 
             for msg in history
@@ -127,7 +158,12 @@ async def get_response(request: Request):
             
             elif "Give me overall profile feedback" in user_input:
                 if "<Please paste" not in user_input:
-                    return {"response": "What specific aspects would you like feedback on? (e.g., completeness, professionalism, keyword optimization)"}
+                    return {
+                        "response": "Let's analyze your entire LinkedIn profile. First, please share your current headline:",
+                        "feedback_flow": "awaiting_headline"
+                    }
+                else:
+                    return {"response": "Please edit the message with your actual headline and send it again."}
             
             # After collecting all information, generate the enhanced content
             if "Here is my exact" not in user_input and not any(
@@ -140,8 +176,86 @@ async def get_response(request: Request):
                     "Give me overall profile feedback"
                 ]
             ):
-                # This is the final input (career/job/tone/etc.)
-                # Find the previous message to determine which section we're enhancing
+                # Check if we're in feedback flow
+                feedback_flow = data.get("feedback_flow")
+                if feedback_flow:
+                    # Handle comprehensive feedback steps
+                    if feedback_flow == "awaiting_headline":
+                        return {
+                            "response": "Great! Now please share your About section:",
+                            "feedback_flow": "awaiting_about",
+                            "headline": user_input
+                        }
+                    elif feedback_flow == "awaiting_about":
+                        return {
+                            "response": "Thank you. Next, please share your Experience section:",
+                            "feedback_flow": "awaiting_experience",
+                            "about": user_input
+                        }
+                    elif feedback_flow == "awaiting_experience":
+                        return {
+                            "response": "Got it. Now please share your Skills:",
+                            "feedback_flow": "awaiting_skills",
+                            "experience": user_input
+                        }
+                    elif feedback_flow == "awaiting_skills":
+                        return {
+                            "response": "Finally, what is your desired career/job title?",
+                            "feedback_flow": "awaiting_job",
+                            "skills": user_input
+                        }
+                    elif feedback_flow == "awaiting_job":
+                        # Now we have all data, generate comprehensive feedback
+                        profile_data = {
+                            "headline": data.get("headline"),
+                            "about": data.get("about"),
+                            "experience": data.get("experience"),
+                            "skills": data.get("skills"),
+                            "desired_job": user_input
+                        }
+                        
+                        prompt = f"""Provide comprehensive LinkedIn profile feedback based on:
+                        
+                        Headline: {profile_data['headline']}
+                        About: {profile_data['about']}
+                        Experience: {profile_data['experience']}
+                        Skills: {profile_data['skills']}
+                        Desired Job: {profile_data['desired_job']}
+
+                        Please provide:
+                        1. Overall profile assessment
+                        2. Section-by-section analysis
+                        3. Top 3 improvement recommendations
+                        4. Keyword optimization for desired job
+                        5. Final score (1-100) with justification"""
+
+                        payload = {
+                            "model": "mistralai/Mistral-7B-Instruct-v0.1",
+                            "prompt": f"[INST] You are a LinkedIn expert. {prompt} [/INST]",
+                            "max_tokens": 1500,
+                            "temperature": 0.5,
+                            "top_p": 0.9
+                        }
+                        
+                        response = requests.post(
+                            "https://api.together.xyz/v1/completions",
+                            json=payload,
+                            headers=headers
+                        )
+                        response.raise_for_status()
+                        
+                        result = response.json()
+                        output = result.get("choices", [{}])[0].get("text", "").strip()
+                        
+                        # Add navigation options
+                        if output:
+                            output += "\n\n[Actions]\n"
+                            output += "1. [Jump to another section]\n"
+                            output += "2. [Finish LinkedIn enhancement]"
+                        
+                        return {"response": output}
+                # End of comprehensive feedback flow changes
+            
                 prev_msgs = [msg.get("text", "") for msg in history]
                 section_type = ""
                 
