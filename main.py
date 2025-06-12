@@ -86,7 +86,7 @@ Please:
             "About": min(100, max(50, len(about) // 5)),
             "Experience": min(100, max(70, len(experience) // 4)),
             "Skills": min(100, max(65, len(skills) // 2)),
-            "Overall": min(100, max(60, (len(headline) + len(about) + len(experience) + len(skills)) // 25)
+            "Overall": min(100, max(60, (len(headline) + len(about) + len(experience) + len(skills)) // 25)),
         }
         
         analysis_prompt = f"""Provide comprehensive LinkedIn profile feedback based on these details:
