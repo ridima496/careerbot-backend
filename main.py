@@ -23,15 +23,10 @@ app.add_middleware(
 @app.get("/")
 async def root():
     return {"message": "CareerBot backend is live!"}
-    
+
 def enhance_linkedin_section(section_type: str, user_content: str, additional_info: Optional[str] = None) -> str:
-    """
-    Generates enhanced LinkedIn content based on the section type and user input.
-    """
-    base_prompt = ""
-    
     if section_type == "headline":
-        base_prompt = f"""Rewrite this LinkedIn headline to be more compelling and optimized for ATS:
+        return f"""Rewrite this LinkedIn headline to be more compelling and optimized for ATS:
 Original Headline: {user_content}
 Desired Career/Job: {additional_info}
 
@@ -41,7 +36,7 @@ Please provide:
 3. Keywords to include for better visibility"""
     
     elif section_type == "about":
-        base_prompt = f"""Rewrite this LinkedIn 'About' section to be more engaging and professional:
+        return f"""Rewrite this LinkedIn 'About' section to be more engaging and professional:
 Original About: {user_content}
 Desired Tone: {additional_info}
 
@@ -52,7 +47,7 @@ Please:
 4. Maintain a {additional_info} tone"""
     
     elif section_type == "experience":
-        base_prompt = f"""Enhance this LinkedIn experience description:
+        return f"""Enhance this LinkedIn experience description:
 Original Experience: {user_content}
 Aspects to Highlight: {additional_info}
 
@@ -63,7 +58,7 @@ Please:
 4. Include action verbs"""
     
     elif section_type == "skills":
-        base_prompt = f"""Optimize these skills for LinkedIn:
+        return f"""Optimize these skills for LinkedIn:
 Original Skills: {user_content}
 Target Job/Industry: {additional_info}
 
@@ -80,7 +75,6 @@ Please:
         skills = user_content.get("skills", "")
         desired_job = user_content.get("desiredJob", "")
         
-        # Generate scores for visualization (in a real app, these would be calculated)
         scores = {
             "Headline": min(100, max(60, len(headline) // 3)),
             "About": min(100, max(50, len(about) // 5)),
@@ -89,7 +83,7 @@ Please:
             "Overall": min(100, max(60, (len(headline) + len(about) + len(experience) + len(skills)) // 25)),
         }
         
-        analysis_prompt = f"""Provide comprehensive LinkedIn profile feedback based on these details:
+        analysis_prompt = f"""Provide comprehensive LinkedIn profile feedback based on:
         
 Current Headline: {headline}
 About Section: {about}
@@ -98,25 +92,20 @@ Skills Section: {skills}
 Desired Career/Job: {desired_job}
 
 Analysis Format:
-1. **Profile Summary**: Brief overview of profile strength
+1. **Profile Summary**: Brief overview
 2. **Section-by-Section Analysis**:
    - Headline: /100 score - Key feedback
    - About: /100 score - Key feedback
    - Experience: /100 score - Key feedback
    - Skills: /100 score - Key feedback
-3. **Top 3 Recommendations**: Actionable improvements
-4. **Keyword Optimization**: Suggestions for "{desired_job}"
-5. **Final Score**: /100 with justification
+3. **Top 3 Recommendations**
+4. **Keyword Optimization** for "{desired_job}"
+5. **Final Score**: /100 with justification"""
 
-Provide detailed, professional feedback with specific examples of improvements."""
-
-        # Add visualization data to the response
-        response = {
+        return {
             "visualization": scores,
             "analysis": analysis_prompt
         }
-        
-        return response
 
 @app.post("/get_response")
 async def get_response(request: Request):
@@ -139,7 +128,6 @@ async def get_response(request: Request):
         )
 
         if is_linkedin_enhancer:
-            # Determine which stage of LinkedIn enhancement we're in
             if "Improve my headline" in user_input:
                 if "<Please paste" not in user_input:
                     return {"response": "Now, please mention your desired career or job title:"}
@@ -165,7 +153,6 @@ async def get_response(request: Request):
                 else:
                     return {"response": "Please edit the message with your actual headline and send it again."}
             
-            # After collecting all information, generate the enhanced content
             if "Here is my exact" not in user_input and not any(
                 q in user_input for q in [
                     "Help me enhance",
@@ -176,10 +163,8 @@ async def get_response(request: Request):
                     "Give me overall profile feedback"
                 ]
             ):
-                # Check if we're in feedback flow
                 feedback_flow = data.get("feedback_flow")
                 if feedback_flow:
-                    # Handle comprehensive feedback steps
                     if feedback_flow == "awaiting_headline":
                         return {
                             "response": "Great! Now please share your About section:",
@@ -205,7 +190,6 @@ async def get_response(request: Request):
                             "skills": user_input
                         }
                     elif feedback_flow == "awaiting_job":
-                        # Now we have all data, generate comprehensive feedback
                         profile_data = {
                             "headline": data.get("headline"),
                             "about": data.get("about"),
@@ -214,24 +198,12 @@ async def get_response(request: Request):
                             "desired_job": user_input
                         }
                         
-                        prompt = f"""Provide comprehensive LinkedIn profile feedback based on:
+                        result = enhance_linkedin_section("comprehensive_feedback", profile_data)
+                        prompt = f"[INST] You are a LinkedIn expert. {result['analysis']} [/INST]"
                         
-                        Headline: {profile_data['headline']}
-                        About: {profile_data['about']}
-                        Experience: {profile_data['experience']}
-                        Skills: {profile_data['skills']}
-                        Desired Job: {profile_data['desired_job']}
-
-                        Please provide:
-                        1. Overall profile assessment
-                        2. Section-by-section analysis
-                        3. Top 3 improvement recommendations
-                        4. Keyword optimization for desired job
-                        5. Final score (1-100) with justification"""
-
                         payload = {
                             "model": "mistralai/Mistral-7B-Instruct-v0.1",
-                            "prompt": f"[INST] You are a LinkedIn expert. {prompt} [/INST]",
+                            "prompt": prompt,
                             "max_tokens": 1500,
                             "temperature": 0.5,
                             "top_p": 0.9
@@ -244,18 +216,14 @@ async def get_response(request: Request):
                         )
                         response.raise_for_status()
                         
-                        result = response.json()
-                        output = result.get("choices", [{}])[0].get("text", "").strip()
+                        llm_response = response.json()
+                        output = llm_response.get("choices", [{}])[0].get("text", "").strip()
                         
-                        # Add navigation options
-                        if output:
-                            output += "\n\n[Actions]\n"
-                            output += "1. [Jump to another section]\n"
-                            output += "2. [Finish LinkedIn enhancement]"
-                        
-                        return {"response": output}
-                # End of comprehensive feedback flow changes
-            
+                        return {
+                            "response": output,
+                            "visualization": result["visualization"]
+                        }
+
                 prev_msgs = [msg.get("text", "") for msg in history]
                 section_type = ""
                 
@@ -267,17 +235,10 @@ async def get_response(request: Request):
                     section_type = "experience"
                 elif "skills section" in prev_msgs[-1]:
                     section_type = "skills"
-                elif "profile feedback" in prev_msgs[-1]:
-                    section_type = "feedback"
                 
                 if section_type:
-                    # Get the original content from the message before last
                     original_content = prev_msgs[-2].split("Here is my exact")[1].split(":")[1].strip()
-                    
-                    # Create the specialized prompt
                     prompt = enhance_linkedin_section(section_type, original_content, user_input)
-                    
-                    # Add context to help the model understand this is LinkedIn-specific
                     prompt = f"[INST] You are a LinkedIn profile expert. {prompt} [/INST]"
                     
                     payload = {
@@ -298,7 +259,6 @@ async def get_response(request: Request):
                     result = response.json()
                     output = result.get("choices", [{}])[0].get("text", "").strip()
                     
-                    # Add navigation options
                     if output:
                         output += "\n\n[Actions]\n"
                         output += "1. [Jump to another section]\n"
@@ -306,13 +266,12 @@ async def get_response(request: Request):
                     
                     return {"response": output or "No response generated."}
 
-        # Regular chat handling
         formatted_history = ""
         for msg in history:
             role = "user" if msg["sender"] == "You" else "assistant"
             formatted_history += f"{role}: {msg['text']}\n"
 
-        prompt = f"[INST] You are CareerBot, an AI assistant that helps with career guidance.\n{formatted_history}user: {user_input} [/INST]"
+        prompt = f"[INST] You are CareerBot, an AI assistant that helps with career guidance. Only answer to career-related questions.\n{formatted_history}user: {user_input} [/INST]"
 
         payload = {
             "model": "mistralai/Mistral-7B-Instruct-v0.1",
@@ -327,6 +286,7 @@ async def get_response(request: Request):
 
         result = response.json()
         output = result.get("choices", [{}])[0].get("text", "").strip()
+        output = output.replace('\n', '<br>')
 
         return {"response": output or "No response generated."}
 
