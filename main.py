@@ -270,7 +270,7 @@ async def get_response(request: Request):
                     
                     return {"response": output or "No response generated."}
 
-formatted_history = ""
+        formatted_history = ""
         for msg in history:
             role = "user" if msg["sender"] == "You" else "assistant"
             formatted_history += f"{role}: {msg['text']}\n"
