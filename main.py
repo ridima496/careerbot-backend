@@ -8,7 +8,7 @@ import json
 from dotenv import load_dotenv
 
 load_dotenv()
-TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY")
+TOGETHER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 app = FastAPI()
 
@@ -34,31 +34,36 @@ async def get_response(request: Request):
         if not user_input:
             return {"response": "Please enter a valid message."}
 
+        OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+
         headers = {
-            "Authorization": f"Bearer {TOGETHER_API_KEY}",
-            "Content-Type": "application/json"
+            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://ridima496.github.io/CareerBot/",  # ← change this to your real domain!
+            "X-Title": "CareerBot"
         }
 
-        formatted_history = ""
+        messages = [{"role": "system", "content": "You are CareerBot, an AI assistant that helps with career guidance. Only answer career-related questions."}]
         for msg in history:
-            role = "user" if msg["sender"] == "You" else "assistant"
-            formatted_history += f"{role}: {msg['text']}\n"
-
-        prompt = f"[INST] You are CareerBot, an AI assistant that helps with career guidance. Only answer to career-related questions.\n{formatted_history}user: {user_input} [/INST]"
+            messages.append({
+                "role": "user" if msg["sender"] == "You" else "assistant",
+                "content": msg["text"]
+            })
+        messages.append({"role": "user", "content": user_input})
 
         payload = {
-            "model": "mistralai/Mistral-7B-Instruct-v0.1",
-            "prompt": prompt,
-            "max_tokens": 700,
+            "model": "meta-llama/llama-3-70b-instruct:free",
+            "messages": messages,
+            "max_tokens": 1000,
             "temperature": 0.7,
             "top_p": 0.9
         }
 
-        response = requests.post("https://api.together.xyz/v1/completions", json=payload, headers=headers)
+        response = requests.post("https://openrouter.ai/api/v1/chat/completions", json=payload, headers=headers)
         response.raise_for_status()
 
         result = response.json()
-        output = result.get("choices", [{}])[0].get("text", "").strip()
+        output = result.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
         output = output.replace('\n', '<br>')
 
         return {"response": output or "No response generated."}
