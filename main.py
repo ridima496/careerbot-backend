@@ -59,7 +59,7 @@ async def get_response(request: Request):
             "top_p": 0.9
         }
 
-        response = requests.post("https://openrouter.ai/api/v1/chat/completions", json=payload, headers=headers)
+        response = requests.post("https://openrouter.ai/api/v1", json=payload, headers=headers)
         response.raise_for_status()
 
         result = response.json()
