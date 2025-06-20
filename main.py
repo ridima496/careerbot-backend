@@ -77,14 +77,17 @@ async def get_response(request: Request):
             "max_tokens": 1000,
             "temperature": 0.7,
             "top_p": 0.9
+            "stream": True
         }
 
         response = requests.post(
             "https://openrouter.ai/api/v1/chat/completions",
             headers=headers,
             json=payload,
-            timeout=30  # Add timeout
+            stream=True
         )
+
+        return Response(content=response.iter_content(), media_type="text/event-stream")
         
         response.raise_for_status()  # Will raise HTTPError for 4XX/5XX responses
         result = response.json()
