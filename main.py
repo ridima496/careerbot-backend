@@ -71,8 +71,11 @@ async def get_response(request: Request):
                 stream=True
             ) as response:
                 response.raise_for_status()
-                for chunk in response.iter_content(chunk_size=1024):
-                    yield chunk
+                for chunk in response.iter_lines():
+                    if chunk:
+                        decoded_line = chunk.decode('utf-8')
+                        if decoded_line.startswith('data:') and '[DONE]' not in decoded_line:
+                            yield decoded_line + '\n\n'
 
         return Response(content=generate(), media_type="text/event-stream")
 
