@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request 
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 import requests
 import os
@@ -31,48 +31,30 @@ async def get_response(request: Request):
         if not user_input:
             return {"response": "Please enter a valid message."}
 
-        # Prepare the messages for the API
         messages = [
             {
                 "role": "system", 
-                "content": """You are CareerBot, an AI assistant specializing in career guidance. 
-                Provide helpful, professional advice on topics like:
-                - Entrance exams
-                - School exam preparations
-                - College degrees
-                - Resume/CV writing
-                - Internships
-                - Interview preparation
-                - Career path guidance
-                - Appropriate career advice
-                - Skill development
-                - Job search strategies
-                - LinkedIn profile optimization
-                - Emerging career options
-                
-                For non-career related questions, politely decline to answer."""
+                "content": """You are CareerBot..."""  # Keep your existing system prompt
             }
         ]
         
-        # Add conversation history
         for msg in history:
             messages.append({
                 "role": "user" if msg["sender"] == "You" else "assistant",
                 "content": msg["text"]
             })
         
-        # Add current user input
         messages.append({"role": "user", "content": user_input})
 
         headers = {
             "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-            "HTTP-Referer": "https://your-site-url.com",  # Required by OpenRouter
-            "X-Title": "CareerBot",                       # Required by OpenRouter
+            "HTTP-Referer": "https://your-site-url.com",
+            "X-Title": "CareerBot",
             "Content-Type": "application/json"
         }
 
         payload = {
-            "model": "meta-llama/llama-3-70b-instruct",  # Updated model name
+            "model": "meta-llama/llama-3-70b-instruct",
             "messages": messages,
             "max_tokens": 1000,
             "temperature": 0.7,
@@ -80,29 +62,30 @@ async def get_response(request: Request):
             "stream": True
         }
 
-        response = requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers=headers,
-            json=payload,
-            stream=True
-        )
+        # Create a generator for streaming
+        def generate():
+            with requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers=headers,
+                json=payload,
+                stream=True
+            ) as response:
+                response.raise_for_status()
+                for chunk in response.iter_content(chunk_size=1024):
+                    yield chunk
 
-        return Response(content=response.iter_content(), media_type="text/event-stream")
-        
-        response.raise_for_status()  # Will raise HTTPError for 4XX/5XX responses
-        result = response.json()
-        
-        output = result.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
-        
-        # Format the output for HTML display
-        formatted_output = output.replace('\n', '<br>')
-        
-        return {"response": formatted_output or "No response generated."}
+        return Response(content=generate(), media_type="text/event-stream")
 
     except requests.exceptions.RequestException as e:
         print(f"[API ERROR] {str(e)}")
-        return {"response": "⚠️ Sorry, I'm having trouble connecting to the career guidance service. Please try again later."}
+        return Response(
+            content="data: " + '{"response": "⚠️ Service unavailable. Please try later."}\n\n',
+            media_type="text/event-stream"
+        )
     
     except Exception as e:
         print(f"[SERVER ERROR] {str(e)}")
-        return {"response": "⚠️ An unexpected error occurred. Please try again."}
+        return Response(
+            content="data: " + '{"response": "⚠️ An unexpected error occurred."}\n\n',
+            media_type="text/event-stream"
+        )
