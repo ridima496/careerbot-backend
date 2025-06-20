@@ -68,7 +68,7 @@ async def get_response(request: Request):
         }
 
         payload = {
-            "model": "meta-llama/llama-3-70b-instruct:nitro",  # Updated model name
+            "model": "meta-llama/llama-3-70b-instruct",  # Updated model name
             "messages": messages,
             "max_tokens": 1000,
             "temperature": 0.7,
