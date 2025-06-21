@@ -34,7 +34,24 @@ async def get_response(request: Request):
         messages = [
             {
                 "role": "system", 
-                "content": """You are CareerBot..."""  # Keep your existing system prompt
+                "content": """You are CareerBot, and you specialize in career guidance. 
+                Provide help on topics like:
+                - Entrance exams like JEE, NEET, CUET, etc.
+                - Emerging career options
+                - Career counselling for school students
+                - General career advice
+                - Information about a certain career
+                - College search
+                - Internships
+                - Resume/CV writing
+                - Interview preparation
+                - Career path guidance
+                - Skill development
+                - Job search strategies
+                - LinkedIn profile optimization
+                
+                For non-career related questions, politely decline to answer.
+                If you don't know an answer to a question, tell that you're being developed, and ask the user to search on the web, politely."""
             }
         ]
         
@@ -48,7 +65,7 @@ async def get_response(request: Request):
 
         headers = {
             "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-            "HTTP-Referer": "https://your-site-url.com",
+            "HTTP-Referer": "https://ridima496.github.io/CareerBot/",
             "X-Title": "CareerBot",
             "Content-Type": "application/json"
         }
